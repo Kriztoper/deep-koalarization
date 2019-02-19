@@ -1,3 +1,5 @@
+from keras import backend as K
+
 import pickle
 import time
 from os.path import join
@@ -16,6 +18,10 @@ from dataset.tfrecords import LabImageRecordReader
 from datetime import datetime
 prev_time = "00:00:00.000000"
 
+# for loading the ImageNet data
+import glob
+from skimage import img_as_float
+
 matplotlib.use('Agg')
 matplotlib.rcParams['figure.figsize'] = (10.0, 4.0)
 import matplotlib.pyplot as plt
@@ -26,6 +32,39 @@ labels_to_categories = pickle.load(
     open(join(dir_root, 'imagenet1000_clsid_to_human.pkl'), 'rb'))
 
 
+def show_images(images):
+    images = np.reshape(images, [images.shape[0], -1,3])
+    sqrtn = int(np.ceil(np.sqrt(images.shape[0])))
+    sqrtimg = int(np.ceil(np.sqrt(images.shape[1])))
+
+    fig = plt.figure(figsize=(sqrtn, sqrtn))
+    gs = gridspec.GridSpec(sqrtn, sqrtn)
+    gs.update(wspace=0.05, hspace=0.05)
+
+    for i, img in enumerate(images):
+        ax = plt.subplot(gs[i])
+        plt.axis('off')
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_aspect('equal')
+        plt.imshow(img.reshape([sqrtimg,sqrtimg,3]))
+    plt.show()
+    return
+
+
+def get_weight():
+    image_list = []
+    for filename in glob.glob('~/imagenet/resized/*.jpeg'):
+        im = Image.open(filename)
+        img = np.array(im)
+        image_list.append(img)
+        im.close()
+    train = np.asarray(image_list, dtype=np.float64)
+    train = img_as_float(train.astype('uint8'))
+    train = train.astype('float32')
+    show_images(train[:16])
+
+
 def loss_with_metrics(img_ab_out, img_ab_true, name=''):
     # Loss is mean square erros
     cost = tf.reduce_mean(
@@ -33,6 +72,34 @@ def loss_with_metrics(img_ab_out, img_ab_true, name=''):
     # Metrics for tensorboard
     summary = tf.summary.scalar('cost ' + name, cost)
     return cost, summary
+
+
+def categorical_crossentropy_color(y_pred, y_true, name=''):
+
+    # Flatten
+    #print(type(y_pred))
+    #print(type(y_true))
+    n, h, w, q = y_true.shape#n, h, w, q = y_true.shape
+    y_true = K.reshape(y_true, (n * h * w, q))
+    y_pred = K.reshape(y_pred, (n * h * w, q))
+
+    #weights = y_true[:, 313:]  # extract weight from y_true
+    #weights = K.concatenate([weights] * 313, axis=1)
+    #y_true = y_true[:, :-1]  # remove last column
+    #y_pred = y_pred[:, :-1]  # remove last column
+
+    # multiply y_true by weights
+    #y_true = y_true * weights
+
+    cross_ent = K.categorical_crossentropy(y_pred, y_true)
+    cross_ent = tf.reduce_mean(cross_ent, name="crossentropy")
+    #cross_ent = K.mean(cross_ent, axis=-1)
+
+    # Metrics for tensorboard
+    summary = tf.summary.scalar('cost ' + name, cross_ent)
+
+    return cross_ent, summary
+
 
 
 def training_pipeline(col, learning_rate, batch_size):

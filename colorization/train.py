@@ -3,18 +3,22 @@ from keras import backend as K
 from colorization import Colorization
 from colorization.training_utils import evaluation_pipeline, \
     checkpointing_system, \
-    plot_evaluation, training_pipeline, metrics_system, print_log, print_term
+    plot_evaluation, training_pipeline, metrics_system, print_log, print_term,
+    get_weight
 
 import tensorflow as tf
 
 
+# Get class rebalancing weight
+
+
 # PARAMETERS
 run_id = 'run1'
-epochs = 100  #default 100
+epochs = 50  #default 100
 val_number_of_images = 10
-total_train_images = 500  #default 130 * 500
+total_train_images = 10000  #default 130 * 500
 batch_size = 100  #default 100
-learning_rate = 0.001
+learning_rate = 0.001 #default 0.001
 batches = total_train_images // batch_size
 
 # START
