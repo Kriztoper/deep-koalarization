@@ -1,7 +1,23 @@
 import multiprocessing
 from os.path import join, expanduser
 
+from keras.preprocessing.image import img_to_array
+from PIL import Image
+import numpy as np
+from skimage import img_as_float
+
 import tensorflow as tf
+
+
+def get_prob_dist(img_list):
+    yuv_converter = np.array([[0.299,0.587,0.114],[-0.14713,-0.2888,0.436],
+                                  [0.615,-0.514999,-0.10001]])
+    train = np.asarray(img_list, dtype=np.float64)
+    train = img_as_float(train.astype('uint8'))
+    train = train.astype('float32')
+    img_YUV = img_float.dot(yuv_converter)
+    prob_dist_batch = Prob_dist(img_YUV)
+    return prob_dist_batch
 
 
 def queue_single_images_from_folder(folder):
@@ -10,6 +26,25 @@ def queue_single_images_from_folder(folder):
 
     # This queue will yield a filename every time it is polled
     file_matcher = tf.train.match_filenames_once(join(folder, '*.jpeg'))
+    '''
+    with tf.Session() as sess:
+        # Run the variable initializer.
+        sess.run(file_matcher.initializer)
+        filenames = file_matcher.read_value().eval()
+        print(len(filenames))
+        print(filenames)
+    img_list = []
+    for f in filenames:
+        im = Image.open(f)
+        img = np.array(im)
+        img_list.append(img)
+        im.close()
+    prob_dist = get_prob_dist(img_list)
+    print(prob_dist)
+    import sys
+    sys.exit(1)
+    '''
+
 
     # NOTE: if num_epochs is set to something different than None, then we
     # need to run tf.local_variables_initializer when launching the session!!
@@ -21,11 +56,24 @@ def queue_single_images_from_folder(folder):
     image_reader = tf.WholeFileReader()
 
     # This operation polls the queue and reads the image
-    image_key, image_file = image_reader.read(filename_queue)
+    #print(filename_queue.names)
+    image_key, image_file = image_reader.read(filename_queue) 
+
+
+
+    # get numpy array of image file
+    #image_arr = img_to_array(image_file)
+    #print(type(image_file))
+    #print(type(tf.Session().run(tf.constant(tf.stack([image_file])))))
+
 
     # The file needs to be decoded as image and we also need its dimensions
     image_tensor = tf.image.decode_jpeg(image_file)
     image_shape = tf.shape(image_tensor)
+    #print(type(tf.Session().run(tf.constant(image_tensor, shape=[3,], dtype='int32'))))
+    #print(image_shape)
+
+
 
     # Note: nothing has happened yet, we've only defined operations,
     # what we return are tensors

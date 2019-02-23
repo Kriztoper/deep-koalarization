@@ -10,6 +10,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 from pathlib import Path
 import scipy
+import scipy.ndimage
 
 
 def show_images(images):
@@ -30,6 +31,50 @@ def show_images(images):
         plt.imshow(img.reshape([sqrtimg,sqrtimg,3]))
     plt.show()
     return
+
+
+def NN_ab(y):
+    # y is [N, H, W, 3]
+    NN_ab_x = np.round((y[:,:,:,1]+0.6)*19/1.2)
+    NN_ab_y = np.round((y[:,:,:,2]+0.6)*19/1.2)
+    NN_ab = NN_ab_x*20+NN_ab_y
+    return NN_ab.astype(int, copy=False)
+
+
+def assign_bin(y):
+    # Returns the ab bin value for a given training batch
+    # y is [N, H, W, 3] dim
+    # NN is [N, H, W] dim
+    NN = NN_ab(y)
+    return NN
+
+
+def assign_prob(NN, y):
+    # NN is [N, H, W]
+    # y is [N, H, W, 3]
+    prob_dist = np.zeros((y.shape[0]*y.shape[1]*y.shape[2], 400))
+    NN = np.reshape(NN, [NN.size,])
+    #prob_dist[range(y.shape[0]*y.shape[1]*y.shape[2]),NN] = 1
+
+    prob_dist[range(y.shape[0]*y.shape[1]*y.shape[2]),NN] = 0.12
+    prob_dist[range(NN[NN<399].size),NN[NN<399]+1] = 0.11
+    prob_dist[range(NN[NN>0].size),NN[NN>0]+1] = 0.11
+    prob_dist[range(NN[NN<380].size),NN[NN<380]+1] = 0.11
+    prob_dist[range(NN[NN>20].size),NN[NN>20]+1] = 0.11
+    prob_dist[range(NN[NN<379].size),NN[NN<379]+1] = 0.11
+    prob_dist[range(NN[NN>21].size),NN[NN>21]+1] = 0.11
+    prob_dist[range(NN[NN<381].size),NN[NN<381]+1] = 0.11
+    prob_dist[range(NN[NN>19].size),NN[NN>19]+1] = 0.11
+    return np.reshape(prob_dist,[y.shape[0], y.shape[1], y.shape[2], 400])
+
+
+def Prob_dist(y):
+    # Returns ab prob distribution for given training batch
+    # y is [N, H, W,3] dim
+    # x is [N, H, W, 400] dim
+    NN = NN_ab(y)
+    p = assign_prob(NN, y)
+    return p
 
 
 def get_weight(filename: str):
@@ -60,6 +105,10 @@ def get_weight(filename: str):
         train = np.asarray(image_list, dtype=np.float64)
         train = img_as_float(train.astype('uint8'))
         train = train.astype('float32')
+        yuv_converter = np.array([[0.299,0.587,0.114],[-0.14713,-0.2888,0.436],
+                                              [0.615,-0.514999,-0.10001]])
+        train = train.dot(yuv_converter)
+        train = assign_bin(train)
         if os.path.isfile('./weights.npy'):
             image_ndarr = np.load('weights.npy')
             train = np.concatenate((image_ndarr, train), axis=0)
@@ -70,39 +119,30 @@ def get_weight(filename: str):
         print('Weights saved to weights.npy')
 
 
-def NN_ab(y):
-    # y is [N, H, W, 3]
-    NN_ab_x = np.round((y[:,:,:,1]+0.6)*19/1.2)
-    NN_ab_y = np.round((y[:,:,:,2]+0.6)*19/1.2)
-    NN_ab = NN_ab_x*20+NN_ab_y
-    return NN_ab.astype(int)
-
-
-def assign_bin(y):
-    # Returns the ab bin value for a given training batch
-    # y is [N, H, W, 3] dim
-    # NN is [N, H, W] dim
-    NN = NN_ab(y)
-    return NN
-
-
 def get_weighting_factor():
     X_train = np.load('weights.npy')
-    yuv_converter = np.array([[0.299,0.587,0.114],[-0.14713,-0.2888,0.436],
-                                          [0.615,-0.514999,-0.10001]])
-    dist = np.zeros([313])
-    X_YUV = X_train.dot(yuv_converter)
-    ab = assign_bin(X_YUV)
+    print(X_train.dtype)
+    print(X_train[0].dtype)
+    print(X_train.shape)
+    #yuv_converter = np.array([[0.299,0.587,0.114],[-0.14713,-0.2888,0.436],
+    #                                      [0.615,-0.514999,-0.10001]])
+    dist = np.zeros([400])
+    #X_YUV = np.tensordot(X_train, yuv_converter, axes=1)
+    #X_YUV = np.einsum('ij...,kj->ik...', X_train, yuv_converter)
+    #X_YUV = slower_dot(X_train, yuv_converter)
+    #print(X_YUV.shape)
+    #ab = assign_bin(X_train)#X_YUV)
+    ab = X_train
     np.add.at(dist, ab, 1)
     dist = dist/np.sum(dist)
     normalized = scipy.ndimage.filters.gaussian_filter(dist, 5, order=0)
     print(np.sum(normalized))
     lamda = 0.5
-    inv_wgt = (1-lamda)*normalized + lamda/313
+    inv_wgt = (1-lamda)*normalized + lamda/400
     wgt = 1/inv_wgt
     np.save('weighting_factor.npy', wgt)
-    plt.imshow(wgt.reshape([20,20]))
-    plt.show()
+    #plt.imshow(wgt.reshape([20,20]))
+    #plt.show()
 
 
 # Run from the top folder as:

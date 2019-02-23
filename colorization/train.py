@@ -1,15 +1,19 @@
 from keras import backend as K
+import numpy as np
+#import sklearn.neighbors as nn
 
 from colorization import Colorization
 from colorization.training_utils import evaluation_pipeline, \
     checkpointing_system, \
-    plot_evaluation, training_pipeline, metrics_system, print_log, print_term,
-    get_weight
+    plot_evaluation, training_pipeline, metrics_system, print_log, print_term
 
 import tensorflow as tf
 
 
 # Get class rebalancing weight
+def get_weights():
+    wgt = np.load('weighting_factor.npy')
+    return wgt
 
 
 # PARAMETERS
@@ -31,8 +35,17 @@ print_term('Started session...', run_id)
 print_term('Building network...', run_id)
 col = Colorization(256)
 
-opt_operations = training_pipeline(col, learning_rate, batch_size)
-evaluations_ops = evaluation_pipeline(col, val_number_of_images)
+# Load the array of quantized ab value
+wgt = get_weights()
+'''
+q_ab = get_weights()
+nb_q = q_ab.shape[0]
+# Fit a NN to q_ab
+nn_finder = nn.NearestNeighbors(n_neighbors=nb_neighbors, algorithm='ball_tree').fit(q_ab)
+'''
+
+opt_operations = training_pipeline(col, learning_rate, batch_size, wgt)
+evaluations_ops = evaluation_pipeline(col, val_number_of_images, wgt)
 summary_writer = metrics_system(run_id, sess)
 saver, checkpoint_paths, latest_checkpoint = checkpointing_system(run_id)
 print_term('Built network', run_id)

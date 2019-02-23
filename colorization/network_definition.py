@@ -128,5 +128,27 @@ def _build_decoder(encoding_depth):
     model.add(UpSampling2D((2, 2)))
     model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
     model.add(Conv2D(2, (3, 3), activation='tanh', padding='same'))
-    model.add(UpSampling2D((2, 2)))
+    model.add(UpSampling2D((2, 2)))  
+    x = Conv2D(400, (1, 1), activation='relu', padding='same')
+    model.add(x)
+    '''
+    # Reshape Softmax
+    nb_classes = 400
+    def output_shape(input_shape):
+        return (batch_size, h, w, nb_classes + 1)
+
+    def reshape_softmax(x):
+        x = K.permute_dimensions(x, [0, 2, 3, 1])  # last dimension in number of filters
+        x = K.reshape(x, (batch_size * h * w, nb_classes))
+        x = K.softmax(x)
+        # Add a zero column so that x has the same dimension as the target (400 classes + 1 weight)
+        xc = K.zeros((batch_size * h * w, 1))
+        x = K.concatenate([x, xc], axis=1)
+        # Reshape back to (batch_size, h, w, nb_classes + 1) to satisfy keras' shape checks
+        x = K.reshape(x, (batch_size, h, w, nb_classes + 1))
+        return x
+ 
+    ReshapeSoftmax = Lambda(lambda z: reshape_softmax(z), output_shape=output_shape, name="ReshapeSoftmax")
+    x = ReshapeSoftmax(x)
+    '''
     return model

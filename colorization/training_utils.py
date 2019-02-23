@@ -74,6 +74,39 @@ def loss_with_metrics(img_ab_out, img_ab_true, name=''):
     return cost, summary
 
 
+def categorical_crossentropy(y_pred, y_l, y_true_ab, wgt, name=''):
+
+    n, h, w, q = y_pred.shape
+    print(n, h, w, q)
+    YY = tf.placeholder(tf.float32, [None, h, w, q])
+    #tf.assign(YY, prob_dist_batch)
+    #YY = y_true
+    n1, h1, w1, q1 = YY.shape
+    print(n1, h1, w1, q1)
+    q2 = wgt.shape
+    print(q2)
+    n3, h3, w3, q3 = y_true.shape
+    print(n3, h3, w3, q3)
+    reshaped_Y = tf.reshape(YY, shape = [-1, q])
+    reshaped_y_pred = tf.reshape(y_pred, shape = [-1, q])
+    loss_temp = tf.nn.softmax_cross_entropy_with_logits_v2(logits=reshaped_y_pred,labels=reshaped_Y)
+    weight_mat = tf.constant(wgt, shape=[q,])
+    
+    max_y = tf.argmax(YY, axis=3)
+    print(max_y)
+    y_reshaped = tf.reshape(max_y, shape=[tf.size(max_y)])
+    print(y_reshaped)
+    weight = tf.gather(weight_mat, y_reshaped)
+    print(weight)
+
+    weight = tf.reshape(weight, shape=[-1, h, w])
+    loss_reshaped = tf.reshape(loss_temp, [-1, h, w])
+    cost = tf.reduce_mean(weight * tf.cast(loss_reshaped, tf.float64))
+    # Metrics for tensorboard
+    summary = tf.summary.scalar('cost ' + name, cost)
+    return cost, summary
+
+
 def categorical_crossentropy_color(y_pred, y_true, name=''):
 
     # Flatten
@@ -83,13 +116,13 @@ def categorical_crossentropy_color(y_pred, y_true, name=''):
     y_true = K.reshape(y_true, (n * h * w, q))
     y_pred = K.reshape(y_pred, (n * h * w, q))
 
-    #weights = y_true[:, 313:]  # extract weight from y_true
-    #weights = K.concatenate([weights] * 313, axis=1)
-    #y_true = y_true[:, :-1]  # remove last column
-    #y_pred = y_pred[:, :-1]  # remove last column
+    weights = y_true[:, 400:]  # extract weight from y_true
+    weights = K.concatenate([weights] * 400, axis=1)
+    y_true = y_true[:, :-1]  # remove last column
+    y_pred = y_pred[:, :-1]  # remove last column
 
     # multiply y_true by weights
-    #y_true = y_true * weights
+    y_true = y_true * weights
 
     cross_ent = K.categorical_crossentropy(y_pred, y_true)
     cross_ent = tf.reduce_mean(cross_ent, name="crossentropy")
@@ -101,17 +134,70 @@ def categorical_crossentropy_color(y_pred, y_true, name=''):
     return cross_ent, summary
 
 
+def tensor_to_nparray(x):
+    return x.eval()
 
-def training_pipeline(col, learning_rate, batch_size):
+
+def training_pipeline(col, learning_rate, batch_size, wgt):
     # Set up training (input queues, graph, optimizer)
     irr = LabImageRecordReader('lab_images_*.tfrecord', dir_tfrecord)
     read_batched_examples = irr.read_batch(batch_size, shuffle=True)
     # read_batched_examples = irr.read_one()
+    
+    with tf.Session() as sess:
+        f = read_batched_examples['image_name']
+        sess.run(tf.Print(f.eval()))
+    im = Image.open(f)
+    img = np.array(im)
+    #img_list.append(img)
+    print(img)
+    im.close()
+    #prob_dist = get_prob_dist(img_list)
+    #print(prob_dist)
+    import sys
+    sys.exit(1)
+    
     imgs_l = read_batched_examples['image_l']
     imgs_true_ab = read_batched_examples['image_ab']
     imgs_emb = read_batched_examples['image_embedding']
     imgs_ab = col.build(imgs_l, imgs_emb)
-    cost, summary = loss_with_metrics(imgs_ab, imgs_true_ab, 'training')
+    
+    # merge imgs_l and imgs_true_ab as numpy array
+    # get prob dist
+    #tfe.py_func(my_py_func, [x], tf.float32)
+    print(type(imgs_l))
+    print(type(imgs_true_ab))
+    y_l = tf.py_func(tensor_to_nparray, [imgs_l], tf.float32)
+    #y_l = imgs_l.numpy()#tf.Session().run(tf.constant(imgs_l))
+    print('l after conversion ')
+    print(type(y_l))
+    y_true_ab = tf.py_func(tensor_to_nparray, [imgs_true_ab], tf.float32)
+    #y_true_ab = imgs_true_ab.numpy()#tf.Session().run(tf.constant(imgs_true_ab))
+    print('ab after conversion ')
+    print(type(y_true_ab))
+
+    '''
+    print(type(y_l))
+    #y_l = tf.Session().run(tf.constant(y_l))
+    y_l = y_l.numpy()
+    print(type(y_l))
+    y_true_ab = tf.Session().run(tf.constant(y_true_ab))
+    y_true_ab = y_true_ab.numpy()
+    print(type(y_true_ab))
+    y_true = K.concatenate([y_l, y_true_ab], axis=2)
+    samp = y_true
+    print(type(samp))
+    print(dtype(samp))
+    '''
+
+    '''
+    samp_float = (samp)
+    samp_YUV = samp_float.dot(yuv_converter)
+    prob_dist_batch = Prob_dist(samp_YUV)
+    #feed_dict = {Y: }
+    '''
+
+    cost, summary = categorical_crossentropy(imgs_ab, imgs_l, imgs_true_ab, wgt, 'training')
     global_step = tf.Variable(0, name='global_step', trainable=False)
     optimizer = tf.train.AdamOptimizer(learning_rate).minimize(
         cost, global_step=global_step)
@@ -123,7 +209,7 @@ def training_pipeline(col, learning_rate, batch_size):
     }#, irr, read_batched_examples
 
 
-def evaluation_pipeline(col, number_of_images):
+def evaluation_pipeline(col, number_of_images, wgt):
     # Set up validation (input queues, graph)
     irr = LabImageRecordReader('val_lab_images_*.tfrecord', dir_tfrecord)
     read_batched_examples = irr.read_batch(number_of_images, shuffle=False)
@@ -131,8 +217,8 @@ def evaluation_pipeline(col, number_of_images):
     imgs_true_ab_val = read_batched_examples['image_ab']
     imgs_emb_val = read_batched_examples['image_embedding']
     imgs_ab_val = col.build(imgs_l_val, imgs_emb_val)
-    cost, summary = loss_with_metrics(imgs_ab_val, imgs_true_ab_val,
-                                      'validation')
+    cost, summary = categorical_crossentropy(imgs_ab_val, imgs_l_val, imgs_true_ab_val,
+                                      wgt, 'validation')
     return {
         'imgs_l': imgs_l_val,
         'imgs_ab': imgs_ab_val,
