@@ -97,10 +97,17 @@ def residual_block(y, nb_channels_in, nb_channels_out, name, _strides=(1, 1), _p
 def _build_encoder():    
     # Functional implementation
     image_tensor = Input(shape=(None, None, 1))
+    tf.add_to_collection('image_input', image_tensor)
     x = Conv2D(64, (3, 3), activation='relu', padding='same', strides=2)(image_tensor)
+    tf.add_to_collection('conv_output', x)
     #x = wideResUnit(x, 64, 64, 'res1')
     # x = residual_block(x, 64, 64, 'res1')
     x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
+    '''
+    acts_filters = tf.unstack(x, axis=3)
+    for i, filter in enumerate(acts_filters):
+        tf.summary.image('filter' + str(i), tf.expand_dims(filter, axis=3))
+    '''
     # x = wideResUnit(x, 128, 128, 'res2')
     # x = residual_block(x, 128, 128, 'res2')
     x = Conv2D(128, (3, 3), activation='relu', padding='same', strides=2)(x)
@@ -108,8 +115,9 @@ def _build_encoder():
     # x = wideResUnit(x, 256, 256, 'res3')
     # x = residual_block(x, 256, 256, 'res3')
     x = Conv2D(256, (3, 3), activation='relu', padding='same', strides=2)(x)
+    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
     x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
+    x = wideResUnit(x, 512, 512, 'res1')
     x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
     model = Model(inputs=[image_tensor], outputs=[x])
     return model

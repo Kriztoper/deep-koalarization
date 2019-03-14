@@ -7,6 +7,9 @@ import numpy as np
 import cv2
 from skimage import color
 from PIL import Image, ImageChops
+import os
+import utils
+from math import sqrt
 
 from dataset.shared import dir_tfrecord, dir_metrics, dir_checkpoints, dir_root, \
     maybe_create_folder
@@ -26,13 +29,129 @@ labels_to_categories = pickle.load(
     open(join(dir_root, 'imagenet1000_clsid_to_human.pkl'), 'rb'))
 
 
+def put_kernels_on_grid (kernel, pad = 1):
+
+  '''Visualize conv. filters as an image (mostly for the 1st layer).
+  Arranges filters into a grid, with some paddings between adjacent filters.
+  Args:
+    kernel:            tensor of shape [Y, X, NumChannels, NumKernels]
+    pad:               number of black pixels around each filter (between them)
+  Return:
+    Tensor of shape [1, (Y+2*pad)*grid_Y, (X+2*pad)*grid_X, NumChannels].
+  '''
+  # get shape of the grid. NumKernels == grid_Y * grid_X
+  def factorization(n):
+    for i in range(int(sqrt(float(n))), 0, -1):
+      if n % i == 0:
+        if i == 1: print('Who would enter a prime number of filters')
+        return (i, int(n / i))
+  (grid_Y, grid_X) = factorization (kernel.get_shape()[3].value)
+  print ('grid: %d = (%d, %d)' % (kernel.get_shape()[3].value, grid_Y, grid_X))
+
+  x_min = tf.reduce_min(kernel)
+  x_max = tf.reduce_max(kernel)
+  kernel = (kernel - x_min) / (x_max - x_min)
+
+  # pad X and Y
+  x = tf.pad(kernel, tf.constant( [[pad,pad],[pad, pad],[0,0],[0,0]] ), mode = 'CONSTANT')
+
+  # X and Y dimensions, w.r.t. padding
+  Y = kernel.get_shape()[0] + 2 * pad
+  X = kernel.get_shape()[1] + 2 * pad
+
+  channels = kernel.get_shape()[2]
+
+  # put NumKernels to the 1st dimension
+  x = tf.transpose(x, (3, 0, 1, 2))
+  # organize grid on Y axis
+  x = tf.reshape(x, tf.stack([grid_X, Y * grid_Y, X, channels]))
+
+  # switch X and Y axes
+  x = tf.transpose(x, (0, 2, 1, 3))
+  # organize grid on X axis
+  x = tf.reshape(x, tf.stack([1, X * grid_X, Y * grid_Y, channels]))
+
+  # back to normal order (not combining with the next step for clarity)
+  x = tf.transpose(x, (2, 1, 3, 0))
+
+  # to tf.image_summary order [batch_size, height, width, channels],
+  #   where in this case batch_size == 1
+  x = tf.transpose(x, (3, 0, 1, 2))
+
+  # scaling to [0, 255] is not necessary for tensorboard
+  return x
+
+
+def plot_conv_output(conv_img, name):
+    """
+    Makes plots of results of performing convolution
+    :param conv_img: numpy array of rank 4
+    :param name: string, name of convolutional layer
+    :return: nothing, plots are saved on the disk
+    """
+    # make path to output folder
+    plot_dir = os.path.join(PLOT_DIR, 'conv_output')
+    plot_dir = os.path.join(plot_dir, name)
+
+    # create directory if does not exist, otherwise empty it
+    utils.prepare_dir(plot_dir, empty=True)
+
+    w_min = np.min(conv_img)
+    w_max = np.max(conv_img)
+
+    # get number of convolutional filters
+    num_filters = conv_img.shape[3]
+
+    # get number of grid rows and columns
+    grid_r, grid_c = utils.get_grid_dim(num_filters)
+
+    # create figure and axes
+    fig, axes = plt.subplots(min([grid_r, grid_c]),
+                            max([grid_r, grid_c]))
+
+    # iterate filters
+    for l, ax in enumerate(axes.flat):
+        # get a single image
+        img = conv_img[0, :, :,  l]
+        # put it on the grid
+        ax.imshow(img, vmin=w_min, vmax=w_max, interpolation='bicubic', cmap='Greys')
+        # remove any labels from the axes
+        ax.set_xticks([])
+        ax.set_yticks([])
+    # save figure
+    plt.savefig(os.path.join(plot_dir, '{}.png'.format(name)), bbox_inches='tight')
+
+
 def loss_with_metrics(img_ab_out, img_ab_true, name=''):
-    # Loss is mean square erros
+    # Loss is log-cosh loss
+    cost = tf.reduce_mean(tf.keras.losses.logcosh(img_ab_true, img_ab_out))
+    '''
+    # Loss is mean absolute error
+    cost = tf.reduce_mean(tf.losses.absolute_difference(img_ab_true, img_ab_out))
+    '''
+    '''
+    # Loss is mean square error
     cost = tf.reduce_mean(
         tf.squared_difference(img_ab_out, img_ab_true), name="mse")
+    '''
     # Metrics for tensorboard
     summary = tf.summary.scalar('cost ' + name, cost)
     return cost, summary
+
+
+def load_imgs(col, batch_size):
+    # Set up training (input queues, graph, optimizer)
+    irr = LabImageRecordReader('lab_images_*.tfrecord', dir_tfrecord)
+    read_batched_examples = irr.read_batch(batch_size, shuffle=True)
+    imgs_l = read_batched_examples['image_l']
+    imgs_true_ab = read_batched_examples['image_ab']
+    imgs_emb = read_batched_examples['image_embedding']
+    imgs_ab = col.build(imgs_l, imgs_emb)
+    return {
+        'imgs_l': read_batched_examples['image_l'],
+        'imgs_true_ab': read_batched_examples['image_ab'],
+        'imgs_ab': imgs_ab,
+    }
 
 
 def training_pipeline(col, learning_rate, batch_size):
@@ -101,7 +220,7 @@ def print_term(content, run_id, cost=None):
 
 def metrics_system(run_id, sess):
     # Merge all the summaries and set up the writers
-    merged = tf.summary.merge_all()
+    #merged = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter(join(dir_metrics, run_id), sess.graph)
     return train_writer
 
