@@ -236,7 +236,7 @@ def plot_evaluation(res, run_id, epoch, is_eval=False):
         # display the cost function(MSE) output of the image
         cost = res['cost']
 
-        fig, axes = plt.subplots(2, 4)
+        fig, axes = plt.subplots(2, 3)
         # Colorization ab
         axes[0,0].imshow(img_ab)
         axes[0,0].set_title('Colorization ab')
