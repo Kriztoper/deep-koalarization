@@ -17,10 +17,10 @@ import tensorflow as tf
 
 # PARAMETERS
 run_id = 'run1'
-epochs = 50  #default 100
+epochs = 100  #default 100
 val_number_of_images = 10
 total_train_images = 65000  #default 130 * 500
-batch_size = 84  #default 100
+batch_size = 28  #default 100
 learning_rate = 0.001
 batches = total_train_images // batch_size
 
@@ -33,12 +33,12 @@ print_term('Started session...', run_id)
 # Build the network and the various operations
 print_term('Building network...', run_id)
 col = Colorization(256)
-lowres_col = LowRes_Colorization(256)
+#lowres_col = LowRes_Colorization(256)
 ref = Refinement()
 
-opt_operations = training_pipeline(col, lowres_col, ref, learning_rate, batch_size)
-evaluations_ops = evaluation_pipeline(col, lowres_col, ref, val_number_of_images)
-train_col_writer, train_lowres_writer, train_ref_writer, val_col_writer, val_lowres_writer, val_ref_writer = metrics_system(run_id, sess)
+opt_operations = training_pipeline(col, ref, learning_rate, batch_size)#lowres_col, ref, learning_rate, batch_size)
+evaluations_ops = evaluation_pipeline(col, ref, val_number_of_images)#lowres_col, ref, val_number_of_images)
+train_col_writer, train_ref_writer, val_col_writer, val_ref_writer = metrics_system(run_id, sess)#train_lowres_writer, train_ref_writer, val_col_writer, val_lowres_writer, val_ref_writer = metrics_system(run_id, sess)
 saver, checkpoint_paths, latest_checkpoint = checkpointing_system(run_id)
 print_term('Built network', run_id)
 
@@ -76,7 +76,7 @@ with sess.as_default():
                     title='losses',
                     multiline=layout_pb2.MultilineChartContent(tag=[
                         'training_col', 'validation_col',
-                        'training_lowres', 'validation_lowres',
+                        #'training_lowres', 'validation_lowres',
                         'training_ref', 'validation_ref',
                     ]))
                 ])
@@ -93,12 +93,12 @@ with sess.as_default():
             global_step = res['global_step']
             print_term('Cost: {} Global step: {}'
                       .format(res['cost'], global_step), run_id, res['cost'])
-            print_term('Cost_LowRes: {} Global step: {}'
-                      .format(res['cost_lowres'], global_step), run_id, res['cost_lowres'])
+            #print_term('Cost_LowRes: {} Global step: {}'
+            #          .format(res['cost_lowres'], global_step), run_id, res['cost_lowres'])
             print_term('Cost_Ref: {} Global step: {}'
                       .format(res['cost_ref'], global_step), run_id, res['cost_ref'])
             train_col_writer.add_summary(res['summary'], global_step)
-            train_lowres_writer.add_summary(res['summary_lowres'], global_step)
+            #train_lowres_writer.add_summary(res['summary_lowres'], global_step)
             train_ref_writer.add_summary(res['summary_ref'], global_step)
 
         # Save the variables to disk
@@ -108,7 +108,7 @@ with sess.as_default():
         # Evaluation step on validation
         res = sess.run(evaluations_ops)
         val_col_writer.add_summary(res['summary'], global_step)
-        val_lowres_writer.add_summary(res['summary_lowres'], global_step)
+        #val_lowres_writer.add_summary(res['summary_lowres'], global_step)
         val_ref_writer.add_summary(res['summary_ref'], global_step)
         plot_evaluation(res, run_id, epoch)
 
