@@ -16,9 +16,9 @@ K.set_session(sess)
 
 # Build the network and the various operations
 col = Colorization(256)
-lowres_col = LowRes_Colorization(256)
+#lowres_col = LowRes_Colorization(256)
 ref = Refinement()
-evaluations_ops = evaluation_pipeline(col, lowres_col, ref, val_number_of_images)
+evaluations_ops = evaluation_pipeline(col, ref, val_number_of_images)#lowres_col, ref, val_number_of_images)
 summary_writer = metrics_system(run_id, sess)
 saver, checkpoint_paths, latest_checkpoint = checkpointing_system(run_id)
 
