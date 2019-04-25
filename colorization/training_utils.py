@@ -177,7 +177,7 @@ def plot_evaluation(res, run_id, epoch, is_eval=False):
         
         # save simple single image output
         if is_eval:
-            im = trim(img_ref_output)
+            im = trim(img_output)
             im.save(join(dir_root, 'images', run_id, '{}.png'.format(k)), "PNG")
 
         # display the colorfulness score on the image 
