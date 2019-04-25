@@ -167,7 +167,7 @@ def plot_evaluation(res, run_id, epoch, is_eval=False):
     for k in range(len(res['imgs_l'])):
         imgs_l = res['imgs_l'][k][:, :, 0]
         img_gray = l_to_rgb(imgs_l)
-        zeros = np.zeros(res['imgs_ref_ab'][k][:, :, 0].shape)
+        zeros = np.zeros(res['imgs_ab'][k][:, :, 0].shape)
         img_ab = lab_to_rgb(zeros,
                                 res['imgs_ab'][k])
         img_output = lab_to_rgb(imgs_l,
