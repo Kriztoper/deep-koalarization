@@ -227,7 +227,7 @@ def plot_evaluation(res, run_id, epoch, is_eval=False):
         C_ref_output = image_colorfulness(img_ref_output)
         C_true = image_colorfulness(img_true)
         # display the cost function(MSE) output of the image
-        cost = res['cost']
+        cost = res['cost_ref']
 
         fig, axes = plt.subplots(2, 3)
         # Feedforward Colorization ab
