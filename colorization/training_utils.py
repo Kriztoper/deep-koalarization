@@ -263,7 +263,7 @@ def plot_evaluation(res, run_id, epoch, is_eval=False):
 
         # write on the output_colorfulness_*.txt file the colorfulness of the output image and the groundtruth image
         with open('output_colorfulness_{}.txt'.format(run_id), mode='a') as f:
-            f.write('{},{}\n'.format(C_output, C_true))
+            f.write('{},{}\n'.format(C_ref_output, C_true))
 
 
 def l_to_rgb(img_l):
