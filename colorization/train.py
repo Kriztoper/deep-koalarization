@@ -20,7 +20,7 @@ run_id = 'run1'
 epochs = 100  #default 100
 val_number_of_images = 10
 total_train_images = 65000  #default 130 * 500
-batch_size = 100  #default 100
+batch_size = 86  #default 100
 learning_rate = 0.001
 batches = total_train_images // batch_size
 
@@ -79,7 +79,7 @@ with sess.as_default():
                     ]))
                 ])
         ]))
-    train_col_writer.add_summary(layout_summary)
+    train_fwd_writer.add_summary(layout_summary)
 
     for epoch in range(epochs):
         print_term('Starting epoch: {} (total images {})'
