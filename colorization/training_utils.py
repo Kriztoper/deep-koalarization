@@ -243,7 +243,7 @@ def plot_evaluation(res, run_id, epoch, is_eval=False):
         axes[0,2].set_title('Input (grayscale)')
         axes[0,2].axis('off')
         # Feedforward Colorization output
-        axes[1,0].imshow(img_output)
+        axes[1,0].imshow(img_fwd_output)
         axes[1,0].set_title('Feedforward Colorization output\n' + ("{:.4f}".format(C_fwd_output)))
         axes[1,0].axis('off')
         # Refinement output
