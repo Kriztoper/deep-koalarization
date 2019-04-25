@@ -42,32 +42,6 @@ class Colorization:
         return self.decoder(fusion)
 
 
-class Feedforward_Colorization:
-    def __init__(self, depth_after_fusion):
-        self.network = _build_fwd_network()
-        #self.encoder = _build_fwd_encoder()
-        #self.fusion = FusionLayer()
-        #self.after_fusion = Conv2D(
-        #    depth_after_fusion, (1, 1), activation='relu')
-        #self.decoder = _build_fwd_decoder(depth_after_fusion)
-
-    def build(self, img_l):
-        #img_enc = self.encoder(img_l)
-
-        #fusion = self.fusion([img_enc, img_emb])
-        #fusion = self.after_fusion(fusion)
-
-        return self.network(img_l)#self.decoder(fusion)
-
-
-class Refinement:
-    def __init__(self):
-        self.network = _build_network()
-
-    def build(self, img_lab):
-        return self.network(img_lab)
-
-
 def wideResUnit(y, nb_channels_in, nb_channels_out, name):
     with tf.name_scope(name):
         shortcut = y
@@ -120,133 +94,16 @@ def residual_block(y, nb_channels_in, nb_channels_out, name, _strides=(1, 1), _p
         return y
 
 
-def _build_network():
-    image_tensor = Input(shape=(None, None, 5))
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', strides=2)(image_tensor)
-    x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
-    #x = Dropout(0.2)(x)
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
-    x = Dropout(0.2)(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    x = Dropout(0.2)(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    x = Dropout(0.2)(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Dropout(0.2)(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Dropout(0.2)(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    #x = Dropout(0.2)(x)
-    x = Conv2D(1024, (5, 5), activation='relu', padding='same')(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
-    #x = UpSampling2D((2, 2), interpolation='bilinear')(x)
-    #x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
-    #x = UpSampling2D((2, 2), interpolation='bilinear')(x)
-    x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
-    #x = UpSampling2D((8, 8), interpolation='bilinear')(x)
-    x = UpSampling2D((2, 2), interpolation='bilinear')(x)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same')(x)
-    #x = UpSampling2D((4, 4), interpolation='bilinear')(x)
-    x = UpSampling2D((2, 2), interpolation='bilinear')(x)
-    x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
-    #x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(2, (3, 3), activation='tanh', padding='same')(x)
-    x = UpSampling2D((2, 2), interpolation='bilinear')(x)
-    model = Model(inputs=[image_tensor], outputs=[x])
-    print(model.summary())
-    return model
-
-
-def _build_fwd_network():
-    image_tensor = Input(shape=(None, None, 1))
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', strides=2)(image_tensor)
-    x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
-    x = Dropout(0.2)(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    x = Dropout(0.2)(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    x = Dropout(0.2)(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(1024, (5, 5), activation='relu', padding='same')(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
-    #x = UpSampling2D((2, 2), interpolation='bilinear')(x)
-    x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
-    #x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
-    #x = UpSampling2D((4, 4), interpolation='bilinear')(x)
-    x = UpSampling2D((2, 2), interpolation='bilinear')(x)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same')(x)
-    #x = UpSampling2D((4, 4), interpolation='bilinear')(x)
-    x = UpSampling2D((2, 2), interpolation='bilinear')(x)
-    x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
-    #x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(2, (3, 3), activation='tanh', padding='same')(x)
-    x = UpSampling2D((2, 2), interpolation='bilinear')(x)
-    model = Model(inputs=[image_tensor], outputs=[x])
-    print(model.summary())
-    return model
-
-
 def _build_encoder():    
     # Functional implementation
     image_tensor = Input(shape=(None, None, 1))
     x = Conv2D(64, (3, 3), activation='relu', padding='same', strides=2)(image_tensor)
-    #x = wideResUnit(x, 64, 64, 'res1')
-    # x = residual_block(x, 64, 64, 'res1')
     x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
-    # x = wideResUnit(x, 128, 128, 'res2')
-    # x = residual_block(x, 128, 128, 'res2')
     x = Conv2D(128, (3, 3), activation='relu', padding='same', strides=2)(x)
     x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
-    # x = wideResUnit(x, 256, 256, 'res3')
-    # x = residual_block(x, 256, 256, 'res3')
     x = Conv2D(256, (3, 3), activation='relu', padding='same', strides=2)(x)
     x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
     x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
-    model = Model(inputs=[image_tensor], outputs=[x])
-    print(model.summary())
-    return model
-
-
-def _build_fwd_encoder():
-    # Functional implementation
-    image_tensor = Input(shape=(None, None, 1))
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', strides=2)(image_tensor)
-    #x = wideResUnit(x, 64, 64, 'res1')
-    # x = residual_block(x, 64, 64, 'res1')
-    #x = Conv2D(128, (3, 3), activation='relu', padding='same')(x)
-    # x = wideResUnit(x, 128, 128, 'res2')
-    # x = residual_block(x, 128, 128, 'res2')
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
-    # x = wideResUnit(x, 256, 256, 'res3')
-    # x = residual_block(x, 256, 256, 'res3')
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same', strides=2)(x)
-    #x = Conv2D(512, (3, 3), activation='relu', padding='same')(x)
     x = Conv2D(256, (3, 3), activation='relu', padding='same')(x)
     model = Model(inputs=[image_tensor], outputs=[x])
     print(model.summary())
@@ -257,30 +114,12 @@ def _build_decoder(encoding_depth):
     model = Sequential(name='decoder')
     model.add(InputLayer(input_shape=(None, None, encoding_depth)))
     model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
-    #model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
-    #model.add(UpSampling2D((4, 4), interpolation='bilinear'))
-    model.add(UpSampling2D((2, 2)))#, interpolation='bilinear'))
+    model.add(UpSampling2D((2, 2)))
     model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
     model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
-    #model.add(UpSampling2D((4, 4), interpolation='bilinear'))
-    model.add(UpSampling2D((2, 2)))#, interpolation='bilinear'))
+    model.add(UpSampling2D((2, 2)))
     model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
-    #model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
     model.add(Conv2D(2, (3, 3), activation='tanh', padding='same'))
-    model.add(UpSampling2D((2, 2)))#, interpolation='bilinear'))
-    print(model.summary())
-    return model
-
-
-def _build_fwd_decoder(encoding_depth):
-    model = Sequential(name='decoder')
-    model.add(InputLayer(input_shape=(None, None, encoding_depth)))
-    model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
-    #model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
-    model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
-    #model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
-    model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
-    #model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
-    model.add(Conv2D(2, (3, 3), activation='tanh', padding='same'))
+    model.add(UpSampling2D((2, 2)))
     print(model.summary())
     return model
