@@ -3,7 +3,7 @@ from os import makedirs
 from os.path import expanduser, join
 
 # Default folders
-dir_root = join(expanduser('~'), 'imagenet')
+dir_root = join('/mnt/1444eef6-958a-4e0c-ab3b-d8f63fa9c154', 'imagenet')#expanduser('~'), 'imagenet')
 dir_originals = join(dir_root, 'original')
 dir_resized = join(dir_root, 'resized')
 dir_tfrecord = join(dir_root, 'tfrecords')
