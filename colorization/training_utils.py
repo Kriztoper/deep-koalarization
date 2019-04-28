@@ -71,6 +71,7 @@ def evaluation_pipeline(col, number_of_images):
                                       'validation_col')
     return {
         'imgs_l': imgs_l_val,
+        'imgs_true_ab': imgs_true_ab_val,
         'imgs_ab': imgs_ab_val,
         'imgs_emb': imgs_emb_val,
         'cost': cost,
@@ -200,9 +201,9 @@ def plot_evaluation(res, run_id, epoch, is_eval=False):
         axes[1,0].set_title('Deep Koalarization output\n' + ("{:.4f}".format(C_output)))
         axes[1,0].axis('off')
         # Target (original)
-        axes[1,3].imshow(img_true)
-        axes[1,3].set_title('Target (original)\n' + ("{:.4f}".format(C_true)))
-        axes[1,3].axis('off')
+        axes[1,1].imshow(img_true)
+        axes[1,1].set_title('Target (original)\n' + ("{:.4f}".format(C_true)))
+        axes[1,1].axis('off')
         plt.suptitle('Cost(MSE): ' + str(cost), fontsize=7)
 
         plt.savefig(join(
