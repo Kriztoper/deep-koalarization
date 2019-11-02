@@ -1,9 +1,10 @@
-import tensorflow as tf
 from keras import backend as K
 
-from colorization import Colorization
+from colorization import Colorization, Feedforward_Colorization, Refinement
 from colorization.training_utils import evaluation_pipeline, \
     checkpointing_system, plot_evaluation, metrics_system
+import tensorflow as tf
+
 
 # PARAMETERS
 run_id = 'run{}'.format(1)
@@ -15,7 +16,9 @@ K.set_session(sess)
 
 # Build the network and the various operations
 col = Colorization(256)
-evaluations_ops = evaluation_pipeline(col, val_number_of_images)
+fwd_col = Feedforward_Colorization(256)
+ref = Refinement()
+evaluations_ops = evaluation_pipeline(col, fwd_col, ref, val_number_of_images)
 summary_writer = metrics_system(run_id, sess)
 saver, checkpoint_paths, latest_checkpoint = checkpointing_system(run_id)
 
@@ -39,7 +42,7 @@ with sess.as_default():
     # Evaluation (epoch=-1 to say that this is an evaluation after training)
     res = sess.run(evaluations_ops)
     print('Cost: {}'.format(res['cost']))
-    plot_evaluation(res, run_id, epoch=-1)
+    plot_evaluation(res, run_id, epoch=-1, is_eval=True)
 
     # Finish off the filename queue coordinator.
     coord.request_stop()
